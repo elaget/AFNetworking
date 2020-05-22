@@ -1,4 +1,4 @@
-// UIWebView+AFNetworking.m
+// WKWebView+AFNetworking.m
 // Copyright (c) 2011–2015 Alamofire Software Foundation (http://alamofire.org/)
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -19,7 +19,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-#import "UIWebView+AFNetworking.h"
+#import "WKWebView+AFNetworking.h"
 
 #import <objc/runtime.h>
 
@@ -29,11 +29,11 @@
 #import "AFURLResponseSerialization.h"
 #import "AFURLRequestSerialization.h"
 
-@interface UIWebView (_AFNetworking)
+@interface WKWebView (_AFNetworking)
 @property (readwrite, nonatomic, strong, setter = af_setHTTPRequestOperation:) AFHTTPRequestOperation *af_HTTPRequestOperation;
 @end
 
-@implementation UIWebView (_AFNetworking)
+@implementation WKWebView (_AFNetworking)
 
 - (AFHTTPRequestOperation *)af_HTTPRequestOperation {
     return (AFHTTPRequestOperation *)objc_getAssociatedObject(self, @selector(af_HTTPRequestOperation));
@@ -47,7 +47,7 @@
 
 #pragma mark -
 
-@implementation UIWebView (AFNetworking)
+@implementation WKWebView (AFNetworking)
 
 - (AFHTTPRequestSerializer <AFURLRequestSerialization> *)requestSerializer {
     static AFHTTPRequestSerializer <AFURLRequestSerialization> *_af_defaultRequestSerializer = nil;
@@ -86,11 +86,12 @@
 #pragma mark -
 
 - (void)loadRequest:(NSURLRequest *)request
+		 navigation:(WKNavigation * _Nonnull)navigation
            progress:(void (^)(NSUInteger bytesWritten, long long totalBytesWritten, long long totalBytesExpectedToWrite))progress
             success:(NSString * (^)(NSHTTPURLResponse *response, NSString *HTML))success
             failure:(void (^)(NSError *error))failure
 {
-    [self loadRequest:request MIMEType:nil textEncodingName:nil progress:progress success:^NSData *(NSHTTPURLResponse *response, NSData *data) {
+	[self loadRequest:request navigation:navigation MIMEType:nil textEncodingName:nil progress:progress success:^NSData * _Nonnull(NSHTTPURLResponse * _Nonnull response, NSData * _Nonnull data) {
         NSStringEncoding stringEncoding = NSUTF8StringEncoding;
         if (response.textEncodingName) {
             CFStringEncoding encoding = CFStringConvertIANACharSetNameToEncoding((CFStringRef)response.textEncodingName);
@@ -105,10 +106,11 @@
         }
 
         return [string dataUsingEncoding:stringEncoding];
-    } failure:failure];
+	} failure:failure];
 }
 
 - (void)loadRequest:(NSURLRequest *)request
+		 navigation:(WKNavigation * _Nonnull)navigation
            MIMEType:(NSString *)MIMEType
    textEncodingName:(NSString *)textEncodingName
            progress:(void (^)(NSUInteger bytesWritten, long long totalBytesWritten, long long totalBytesExpectedToWrite))progress
@@ -134,10 +136,10 @@
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wgnu"
         __strong __typeof(weakSelf) strongSelf = weakSelf;
-        [strongSelf loadData:data MIMEType:(MIMEType ?: [operation.response MIMEType]) textEncodingName:(textEncodingName ?: [operation.response textEncodingName]) baseURL:[operation.response URL]];
+		[strongSelf loadData:data MIMEType:(MIMEType ?: [operation.response MIMEType]) characterEncodingName:(textEncodingName ?: [operation.response textEncodingName]) baseURL:[operation.response URL]];
 
-        if ([strongSelf.delegate respondsToSelector:@selector(webViewDidFinishLoad:)]) {
-            [strongSelf.delegate webViewDidFinishLoad:strongSelf];
+        if ([strongSelf.navigationDelegate respondsToSelector:@selector(webViewDidFinishLoad:)]) {
+            [strongSelf.navigationDelegate webView:self didFinishNavigation:navigation];
         }
 
 #pragma clang diagnostic pop
@@ -149,8 +151,8 @@
 
     [self.af_HTTPRequestOperation start];
 
-    if ([self.delegate respondsToSelector:@selector(webViewDidStartLoad:)]) {
-        [self.delegate webViewDidStartLoad:self];
+    if ([self.navigationDelegate respondsToSelector:@selector(webViewDidStartLoad:)]) {
+        [self.navigationDelegate webView:self didFinishNavigation:navigation];
     }
 }
 
